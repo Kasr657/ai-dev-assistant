@@ -1,0 +1,32 @@
+# Exclude everything by default, then whitelist what the build needs.
+# This keeps the Docker build context small and prevents secrets from
+# being accidentally sent to the Docker daemon.
+
+**
+
+# Whitelist: Maven build files
+!pom.xml
+!src/
+!openapi.yaml
+
+# Exclude test sources from the build context (builder stage skips tests anyway)
+src/test/
+
+# Exclude IDE and OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Exclude local environment files — NEVER send secrets to Docker daemon
+.env
+.env.*
+*.env
+secrets.properties
+
+# Exclude git history
+.git/
+.gitignore
+
+# Exclude AI tool directories
+.kiro/

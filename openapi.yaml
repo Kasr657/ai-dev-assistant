@@ -1,0 +1,238 @@
+openapi: "3.0.3"
+info:
+  title: AI Developer Assistant API
+  description: |
+    A production-grade, backend-only REST API for AI-powered code analysis.
+
+    Accepts a code snippet and programming language, constructs a structured prompt,
+    delegates to OpenAI with strict JSON schema enforcement, validates the response,
+    and returns deterministic insights.
+
+    Every response includes an `X-Request-Id` header for log correlation.
+  version: "1.0.0"
+  contact:
+    name: AI Developer Assistant
+    url: https://github.com/koreddy/ai-dev-assistant
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+paths:
+  /api/v1/code/analyze:
+    post:
+      operationId: analyzeCode
+      summary: Analyze a code snippet
+      description: |
+        Accepts a code snippet and programming language, returns structured AI-generated insights.
+
+        The `code` field must be non-blank and must not exceed the configured maximum prompt
+        character limit (default ~12,000 characters). Requests exceeding the limit are rejected
+        with HTTP 400 before any LLM call is made.
+      tags:
+        - code
+      parameters:
+        - name: X-Request-Id
+          in: header
+          required: false
+          description: |
+            Optional client-supplied request ID for log correlation. If provided, the same value
+            is echoed back in the response `X-Request-Id` header. If absent, a UUID v4 is generated.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysisRequest'
+            examples:
+              java_hello_world:
+                summary: Simple Java example
+                value:
+                  code: "public class Hello { public static void main(String[] args) { System.out.println(\"Hello\"); } }"
+                  language: "Java"
+              python_function:
+                summary: Python function example
+                value:
+                  code: "def add(a, b):\n    return a + b"
+                  language: "Python"
+      responses:
+        '200':
+          description: Successful analysis
+          headers:
+            X-Request-Id:
+              description: Request ID for log correlation (echoed from request or generated)
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResponse'
+        '400':
+          description: |
+            Invalid request. Causes:
+            - `code` or `language` field is blank or missing
+            - Prompt exceeds the configured maximum character limit
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            The LLM refused to process the request due to content policy or safety filters
+            (HTTP 422 Unprocessable Content per RFC 9110).
+            The caller may retry with different input.
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: |
+            Too many requests. Causes:
+            - Global API rate limit exceeded (token bucket empty). Retry after 1 second.
+            - OpenAI API rate limit exceeded. Back off and retry later.
+            The response includes a `Retry-After` header when the cause is the global rate limit.
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+            Retry-After:
+              description: Seconds to wait before retrying (present when global rate limit is exceeded)
+              schema:
+                type: integer
+                example: 1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: |
+            Internal server error. Causes:
+            - Invalid or missing OpenAI API key (configuration error)
+            - Unexpected network or parsing failure
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: |
+            The LLM returned an invalid or unparseable response after all retry attempts.
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: |
+            The LLM request timed out. Either the HTTP client timeout or the service-level
+            deadline was exceeded.
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: |
+            The LLM circuit breaker is open — too many recent failures have been detected.
+            The service is temporarily protecting itself from cascading failures.
+            Retry after approximately 30 seconds.
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    AnalysisRequest:
+      type: object
+      required:
+        - code
+        - language
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50000
+          description: |
+            The source code snippet to analyze. Must be non-blank.
+            Requests where the resulting prompt exceeds the configured maximum character
+            limit (default ~12,000 chars) are rejected with HTTP 400.
+          example: "public class Hello { public static void main(String[] args) { System.out.println(\"Hello\"); } }"
+        language:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The programming language of the code snippet (e.g. Java, Python, TypeScript).
+          example: "Java"
+
+    AnalysisResponse:
+      type: object
+      required:
+        - summary
+        - issues
+        - improvements
+      properties:
+        summary:
+          type: string
+          minLength: 1
+          description: A one-sentence summary of the code analysis.
+          example: "Simple Hello World program with no error handling."
+        issues:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          description: List of identified issues in the code. May be empty if no issues are found.
+          example: ["No error handling", "Magic string usage"]
+        improvements:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          description: List of suggested improvements. May be empty if no improvements are needed.
+          example: ["Add error handling", "Extract string to a constant"]
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - requestId
+      properties:
+        error:
+          type: string
+          minLength: 1
+          description: Exception class name identifying the error type.
+          example: "LlmTimeoutException"
+        message:
+          type: string
+          description: Human-readable description of the error.
+          example: "Service-level deadline of 70s exceeded"
+        requestId:
+          type: string
+          description: |
+            The request ID for log correlation. Matches the `X-Request-Id` header.
+            Use this value to filter logs for the specific request.
+          example: "550e8400-e29b-41d4-a716-446655440000"

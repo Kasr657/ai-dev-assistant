@@ -1,0 +1,119 @@
+# =============================================================================
+# AI Developer Assistant — .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Maven build output
+# -----------------------------------------------------------------------------
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# -----------------------------------------------------------------------------
+# IDE — IntelliJ IDEA
+# -----------------------------------------------------------------------------
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# IDE — VS Code / Cursor
+.vscode/
+*.code-workspace
+
+# IDE — Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+# IDE — NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# -----------------------------------------------------------------------------
+# OS generated files
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# -----------------------------------------------------------------------------
+# Java
+# -----------------------------------------------------------------------------
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# -----------------------------------------------------------------------------
+# Spring Boot
+# -----------------------------------------------------------------------------
+# Local override properties (never commit secrets)
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# Spring Boot devtools restart trigger
+.reloadtrigger
+
+# -----------------------------------------------------------------------------
+# Environment & secrets — NEVER commit these
+# -----------------------------------------------------------------------------
+.env
+.env.*
+*.env
+secrets.properties
+secrets.yml
+secrets.yaml
+
+# -----------------------------------------------------------------------------
+# Testing
+# -----------------------------------------------------------------------------
+# jqwik stores a local database of previously failing property tests.
+# It is machine-specific and regenerated on every test run.
+.jqwik-database
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+*.log
+logs/
+spring.log
+
+# -----------------------------------------------------------------------------
+# AI development tools
+# -----------------------------------------------------------------------------
+
+# Kiro — commit specs (requirements, design, tasks) and steering rules,
+# but exclude tool settings which may contain tokens or local paths.
+.kiro/settings/
+.kiro/hooks/
+
+# Keep Kiro specs and steering (valuable documentation)
+!.kiro/specs/
+!.kiro/steering/
+
+# Amazon Q / CodeWhisperer
+.amazonq/
+
+# Windsurf
+.windsurf/
+
+# Cursor — rules are worth keeping, settings are not
+.cursor/settings/
